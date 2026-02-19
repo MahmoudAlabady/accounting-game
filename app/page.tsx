@@ -32,7 +32,7 @@ import {
  * - Use "Practice" for questions + answers.
  */
 
-const fmt = (n) => {
+const fmt = (n: number) => {
   const sign = n < 0 ? "-" : "";
   const abs = Math.abs(n);
   return sign + "$" + abs.toLocaleString();
