@@ -32,13 +32,42 @@ import {
  * - Use "Practice" for questions + answers.
  */
 
+type AccountingState = {
+  cash: number;
+  supplies: number;
+  equipment: number;
+  ar: number;
+  ap: number;
+  notes: number;
+  capital: number;
+  withdrawals: number;
+  revenue: number;
+  expense: number;
+};
+
+type Transaction = {
+  id: string;
+  title: string;
+  story: string;
+  amount: number;
+  expected: AccountingState;
+  hint: string;
+};
+
+type LastResult = {
+  ok: boolean;
+  mismatches: string[];
+  entered: AccountingState;
+  expected: AccountingState;
+};
+
 const fmt = (n: number) => {
   const sign = n < 0 ? "-" : "";
   const abs = Math.abs(n);
   return sign + "$" + abs.toLocaleString();
 };
 
-function clampMoney(n) {
+function clampMoney(n: number) {
   // keep tidy; allcow negative for learning but limit extremes
   if (n > 999999999) return 999999999;
   if (n < -999999999) return -999999999;
@@ -253,7 +282,7 @@ const TXN_BANK = [
   },
 ];
 
-function Pill({ children }) {
+function Pill({ children }: { children: React.ReactNode }) {
   return (
     <span className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium">
       {children}
@@ -261,7 +290,7 @@ function Pill({ children }) {
   );
 }
 
-function StatRow({ label, value }) {
+function StatRow({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-center justify-between py-1">
       <div className="text-sm text-muted-foreground">{label}</div>
@@ -270,7 +299,7 @@ function StatRow({ label, value }) {
   );
 }
 
-function EquationPanel({ state }) {
+function EquationPanel({ state }: { state: AccountingState }) {
   const assets = state.cash + state.supplies + state.equipment + state.ar;
   const liabilities = state.ap + state.notes;
   const equity = state.capital + state.revenue - state.expense - state.withdrawals;
@@ -342,7 +371,7 @@ function EquationPanel({ state }) {
   );
 }
 
-function StepCoach({ step, txn }) {
+function StepCoach({ step, txn }: { step: number; txn: Transaction }) {
   const steps = [
     {
       title: "1) Read the story",
@@ -425,14 +454,14 @@ function StepCoach({ step, txn }) {
   );
 }
 
-function DeltaInput({ label, value, onChange }) {
+function DeltaInput({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
   return (
     <div className="space-y-1">
       <div className="text-xs font-semibold text-muted-foreground">{label}</div>
       <Input
         inputMode="numeric"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onChange(Number(e.target.value) || 0)}
         placeholder="0"
         className="rounded-xl"
       />
@@ -463,26 +492,26 @@ function EquationLab() {
 
   // player-entered deltas for the current transaction
   const [delta, setDelta] = useState({ ...emptyState });
-  const [lastResult, setLastResult] = useState(null);
+  const [lastResult, setLastResult] = useState<LastResult | null>(null);
   const txn = TXN_BANK[txnIndex];
 
   const progress = Math.round(((txnIndex) / (TXN_BANK.length)) * 100);
 
   const expected = useMemo(() => txn.expected, [txnIndex]);
 
-  const parseDelta = (obj) => {
-    const out = {};
+  const parseDelta = (obj: Record<string, any>): AccountingState => {
+    const out: Partial<AccountingState> = {};
     for (const k of Object.keys(obj)) {
       const v = String(obj[k] ?? "").trim();
       const n = v === "" || v === "-" ? 0 : Number(v);
-      out[k] = clampMoney(Number.isFinite(n) ? n : 0);
+      out[k as keyof AccountingState] = clampMoney(Number.isFinite(n) ? n : 0);
     }
-    return out;
+    return out as AccountingState;
   };
 
-  const applyDelta = (base, d) => {
+  const applyDelta = (base: AccountingState, d: AccountingState): AccountingState => {
     const next = { ...base };
-    for (const k of Object.keys(d)) next[k] = clampMoney(next[k] + d[k]);
+    for (const k of Object.keys(d)) next[k as keyof AccountingState] = clampMoney(next[k as keyof AccountingState] + d[k as keyof AccountingState]);
     return next;
   };
 
@@ -497,7 +526,7 @@ function EquationLab() {
     const keys = Object.keys(emptyState);
     const mismatches = [];
     for (const k of keys) {
-      if (d[k] !== expected[k]) mismatches.push(k);
+      if (d[k as keyof AccountingState] !== expected[k as keyof AccountingState]) mismatches.push(k);
     }
     const ok = mismatches.length === 0;
     setLastResult({ ok, mismatches, entered: d, expected });
@@ -522,7 +551,7 @@ function EquationLab() {
     resetTxnInput();
   };
 
-  const jumpTo = (i) => {
+  const jumpTo = (i: number) => {
     setTxnIndex(i);
     resetTxnInput();
   };
@@ -864,13 +893,13 @@ function QuickSheet() {
 
 function PracticeQuiz() {
   const [idx, setIdx] = useState(0);
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState<number | null>(null);
   const [show, setShow] = useState(false);
   const [score, setScore] = useState(0);
 
   const item = PRACTICE[idx];
 
-  const pick = (i) => {
+  const pick = (i: number) => {
     setSelected(i);
     setShow(true);
     if (i === item.a) setScore((s) => s + 1);
